@@ -526,27 +526,21 @@ window.DOMHandler = class {
       this.#a._EnableWindowResizeEvent(), this.#V(), this.#s = self.C3_CreateRuntime(c), await self.C3_InitRuntime(this.#s, c)
     }
     async CreateWorker(e, t = {}) {
-  // Already-safe cases
+  // Already a blob → safe
   if (e.startsWith("blob:")) {
     return new Worker(e, t);
   }
 
-  if ("playable-ad-single-file" === this.#T) {
-    const i = this._localFileBlobs[e];
-    if (!i) throw new Error("missing script: " + e);
-    return new Worker(URL.createObjectURL(i), t);
-  }
+  // FORCE: load worker source as text first
+  const res = await fetch(e);
+  const source = await res.text();
 
-  // FILE:// fallback (THIS FIXES YOUR ERROR)
-  if (location.protocol === "file:") {
-    const source = await fetch(e).then(r => r.text());
-    const blob = new Blob([source], { type: "application/javascript" });
-    const url = URL.createObjectURL(blob);
-    return new Worker(url, t);
-  }
+  const blob = new Blob([source], {
+    type: "application/javascript"
+  });
 
-  // Normal HTTP/HTTPS
-  return new Worker(e, t);
+  const blobURL = URL.createObjectURL(blob);
+  return new Worker(blobURL, t);
 }
       const i = new URL(e, location.href);
       if (location.origin !== i.origin) {
