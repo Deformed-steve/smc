@@ -525,13 +525,29 @@ window.DOMHandler = class {
       });
       this.#a._EnableWindowResizeEvent(), this.#V(), this.#s = self.C3_CreateRuntime(c), await self.C3_InitRuntime(this.#s, c)
     }
-    async CreateWorker(e, t) {
-      if (e.startsWith("blob:")) return new Worker(e, t);
-      if ("playable-ad-single-file" === this.#T) {
-        const i = this._localFileBlobs[e];
-        if (!i) throw new Error("missing script: " + e);
-        return new Worker(URL.createObjectURL(i), t)
-      }
+    async CreateWorker(e, t = {}) {
+  // Already-safe cases
+  if (e.startsWith("blob:")) {
+    return new Worker(e, t);
+  }
+
+  if ("playable-ad-single-file" === this.#T) {
+    const i = this._localFileBlobs[e];
+    if (!i) throw new Error("missing script: " + e);
+    return new Worker(URL.createObjectURL(i), t);
+  }
+
+  // FILE:// fallback (THIS FIXES YOUR ERROR)
+  if (location.protocol === "file:") {
+    const source = await fetch(e).then(r => r.text());
+    const blob = new Blob([source], { type: "application/javascript" });
+    const url = URL.createObjectURL(blob);
+    return new Worker(url, t);
+  }
+
+  // Normal HTTP/HTTPS
+  return new Worker(e, t);
+}
       const i = new URL(e, location.href);
       if (location.origin !== i.origin) {
         const e = await fetch(i);
@@ -1528,7 +1544,7 @@ window.DOMHandler = class {
     };
   y.AddDOMHandlerClass(L)
 } {
-  const D = "dispatchworker.js",
+  const D = "https://cdn.jsdelivr.net/gh/deformed-steve/smc@main/scripts/dispatchworker.js",
     B = "jobworker.js";
   self.JobSchedulerDOM = class {
     constructor(e) {
